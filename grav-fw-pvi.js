@@ -182,4 +182,51 @@ class GravaFW {
             callback(false, `Caminho do firmware não informado`)
         }
     }
+
+    /**
+     * Realiza gravacao nos microcontroladores Nuvoton atraves do PVI, via JLink command line
+     * @param {string} dirProject Formato esperado: "C:\\Users\\eduardo.rezzadori\\Desktop\\Farmwar\\193M3PL3v01_3.02.hex"
+     * @param {string} commandFile Arquivo de comandos JLink, pseudo-script de gravação
+     * @param {string} device modelo do micrcontrolador
+     * @param {function} callback 
+     * @param {number} timeOut 
+     */
+    static JLink_v7(dirProject = null, commandFile = null, device, callback = () => { }, timeOut = 10000) {
+
+        let error = null, observer = null, logGravacao = [], controleGravacao = null
+        const pathPVI = pvi.runInstructionS("GETPVIPATH", [])
+
+        observer = pvi.FWLink.globalDaqMessagesObservers.add((m, data) => {
+            console.log(m, data)
+            logGravacao.push(data)
+            if (data == "Script processing completed.") {
+                pvi.FWLink.globalDaqMessagesObservers.clear()
+                pvi.daq.init()
+                logGravacao.forEach((e) => {
+                    if (e == "O.K.") {
+                        observer = () => { }
+                        controleGravacao = true
+                    } else if (e == "Cannot connect to target.") {
+                        error = e
+                    }
+                })
+                if (controleGravacao) {
+                    clearTimeout(timeOutGravacao)
+                    callback(true, `Gravado com sucesso, caminho: ${dirProject}`)
+                } else if (error) {
+                    clearTimeout(timeOutGravacao)
+                    callback(false, `Falha na gravação, ${error}`)
+                } else {
+                    clearTimeout(timeOutGravacao)
+                    callback(false, `Falha na gravação, caminho: ${dirProject}`)
+                }
+            }
+        }, "sniffer.exec")
+        pvi.runInstructionS("EXEC", [`${pathPVI}\\Plugins\\JLINK7\\JLink.exe`, `-device ${device} -CommandFile ${commandFile}`, "true", "true"])
+        let timeOutGravacao = setTimeout(() => {
+            pvi.FWLink.globalDaqMessagesObservers.clear()
+            pvi.daq.init()
+            callback(false, `Falha na gravação, verifique a conexão USB do gravador`)
+        }, timeOut)
+    }
 }
