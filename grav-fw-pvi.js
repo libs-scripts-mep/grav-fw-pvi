@@ -5,182 +5,167 @@ class GravaFW {
      * @param {string} dirFirm formato esperado: "I:\\\Documentos\\\Softwares\\\STM8\\\STM8S003F3\\\INV-173\\\173v01\\\173v01_1.50_Com.stp"
      * @param {string} dirOpt formato esperado: "I:\\\Documentos\\\Softwares\\\STM8\\\STM8S003F3\\\INV-173\\\173v01\\\173v01_1.50_Com.stp"
      * @param {string} modelo_uC formato esperado: "STM8S003F3"
-     * @param {function} callback 
-     * @param {number} timeOut 
      */
-    static STM8(dirFirm = null, dirOpt = null, modelo_uC = null, callback = () => { }, timeOut = 5000) {
+    static async STM8(dirFirm = null, dirOpt = null, modelo_uC = null, timeOut = 5000) {
 
-        if (dirFirm != null && dirOpt != null) {
+        return new Promise(async (resolve) => {
 
-            let result = pvi.runInstructionS(`ST.writefirmwarestm8_stlink`, [
-                dirFirm.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`),
-                dirOpt.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`),
-                modelo_uC
-            ])
+            let ObjWriteSTM8 = await defineWriteSTM8(dirFirm, dirOpt, modelo_uC)
 
-            let monitor = setInterval(() => {
+            let logGravacao = ""
 
-                if (result != null) {
+            if (ObjWriteSTM8.sucess) {
 
-                    clearInterval(monitor)
-                    clearTimeout(timeoutMonitor)
+                const id = PVI.FWLink.globalDaqMessagesObservers.add((msg, param) => {
 
-                    if (result.includes(`Verify OPTION BYTE succeeds`)) {
+                    console.log(`%cLog Program: ${param[0]}`, ' color: #B0E0E6')
+                    logGravacao = logGravacao + param[0]
 
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #00EE66')
-                        callback(true, result)
+                    if (param[0] != undefined) {
 
-                    } else if (result.includes(`ERROR : Cannot communicate with the tool`)) {
+                        if (param[0].includes(`Verify OPTION BYTE succeeds`)) {
 
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #EE0033')
-                        callback(null, `Gravador não respondeu`)
+                            PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                            clearTimeout(timeOutGravacao)
 
-                    } else {
+                            resolve({ sucess: true, msg: logGravacao })
 
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #EE0033')
-                        callback(false, `Falha na gravação do firmware final`)
+                        } else if (param[0].includes(`ERROR : Cannot communicate with the tool`)) {
 
-                    }
-                }
-            }, 100)
+                            PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                            clearTimeout(timeOutGravacao)
 
-            let timeoutMonitor = setTimeout(() => {
-                clearInterval(monitor)
-                callback(false, `Tempo de gravação excedido`)
-            }, timeOut)
+                            resolve({ sucess: null, msg: `Gravador não respondeu` })
 
-        } else if (dirFirm != null) {
-
-            let result = pvi.runInstructionS(`ST.writeprogramstm8_stlink`, [
-                dirFirm.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`),
-                modelo_uC
-            ])
-
-            let monitor = setInterval(() => {
-
-                clearInterval(monitor)
-                clearTimeout(timeoutMonitor)
-
-                if (result != null) {
-
-                    if (result.includes(`Verifying PROGRAM MEMORY succeeds`)) {
-
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #00EE66')
-                        callback(true)
-
-                    } else if (result.includes(`ERROR : Cannot communicate with the tool`)) {
-
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #EE0033')
-                        callback(null, `Gravador não respondeu`)
-
-                    } else {
-
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #EE0033')
-                        callback(false, `Falha na gravação do firmware`)
+                        }
 
                     }
-                }
-            }, 100)
 
-            let timeoutMonitor = setTimeout(() => {
-                clearInterval(monitor)
-                callback(false, `Tempo de gravação excedido`)
+                }, "sniffer.exec")
+
+            } else {
+                console.log(`%cNenhum diretório de firmware ou option byte informado`, ' color: #EE0033')
+                resolve({ sucess: false, msg: `Nenhum diretório de firmware ou option byte informado` })
+            }
+
+            pvi.runInstructionS("EXEC", [`C:/Program Files (x86)/STMicroelectronics/st_toolset/stvp/STVP_CmdLine.exe`, ObjWriteSTM8.commandLineArguments, "true", "true"])
+
+            let timeOutGravacao = setTimeout(() => {
+
+                console.log(`%cLog Program:\n\n${logGravacao}`, ' color: #EE0033')
+                PVI.FWLink.globalDaqMessagesObservers.remove(id)
+
+                resolve({ sucess: false, msg: `Falha na gravação do firmware final` })
+
             }, timeOut)
 
-        } else if (dirOpt != null) {
+        })
 
-            let result = pvi.runInstructionS(`ST.writeoptionstm8_stlink`, [
-                dirOpt.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`),
-                modelo_uC
-            ])
 
-            let monitor = setInterval(() => {
+        async function defineWriteSTM8(dirFirm, dirOpt, modelo_uC) {
 
-                clearInterval(monitor)
-                clearTimeout(timeoutMonitor)
+            return new Promise((resolve) => {
 
-                if (result != null) {
+                if (dirFirm != null && dirOpt != null) {
 
-                    if (result.includes(`Verify OPTION BYTE succeeds`)) {
+                    dirFirm = dirFirm.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`)
+                    dirOpt = dirOpt.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`)
 
-                        console.log(`%cLog Desprotect:\n\n${result}`, ' color: #00EE66')
-                        callback(true, result)
+                    resolve({
+                        sucess: true,
+                        commandLineArguments: `-BoardName=ST-LINK -Tool_ID=0 -NbTools=1 -Port=USB -ProgMode=SWIM -Device=${modelo_uC} -verbose -no_loop -no_warn_protect -FileProg=${dirFirm} -FileOption=${dirOpt}`,
+                    })
 
-                    } else if (result.includes(`ERROR : Cannot communicate with the tool`)) {
+                } else if (dirFirm != null) {
 
-                        console.log(`%cLog Desprotect:\n\n${result}`, ' color: #EE0033')
-                        callback(null, `Gravador não respondeu`)
+                    dirFirm = dirFirm.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`)
 
-                    } else {
+                    resolve({
+                        sucess: true,
+                        commandLineArguments: `-BoardName=ST-LINK -Tool_ID=0 -NbTools=1 -Port=USB -ProgMode=SWIM -Device=${modelo_uC} -verbose -no_loop -no_warn_protect -FileProg=${dirFirm}`,
+                    })
 
-                        console.log(`%cLog Desprotect:\n\n${result}`, ' color: #EE0033')
-                        callback(false, `Falha na gravação do option byte`)
+                } else if (dirOpt != null) {
 
-                    }
+                    dirOpt = dirOpt.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`)
+
+                    resolve({
+                        sucess: true,
+                        commandLineArguments: `-BoardName=ST-LINK -Tool_ID=0 -NbTools=1 -Port=USB -ProgMode=SWIM -Device=${modelo_uC} -verbose -no_loop -no_warn_protect -FileOption=${dirOpt}`,
+                    })
+
+                } else {
+                    resolve({
+                        sucess: false,
+                    })
                 }
-            }, 100)
 
-            let timeoutMonitor = setTimeout(() => {
-                clearInterval(monitor)
-                callback(false, `Tempo de gravação excedido`)
-            }, timeOut)
+            })
 
-        } else {
-            callback(false, `Nenhum diretório de firmware ou option byte informado.`)
         }
     }
 
     /**
      * Realiza gravacao nos microcontroladores renesas atraves do PVI, via renesas flash programmer command line
      * @param {string} dirProject Formato esperado: "I:\\\Documentos\\\Softwares\\\RENESAS\\\R5F51303ADFL\\\INV-301\\\301v06\\\301v06.rpj"
-     * @param {function} callback 
      * @param {number} timeOut 
      */
-    static Renesas(dirProject = null, callback = () => { }, timeOut = 5000) {
+    static Renesas(dirProject = null, timeOut = 5000) {
 
-        if (dirProject != null) {
+        return new Promise((resolve) => {
 
-            let result = pvi.runInstructionS(`RENESAS.gravafw`, [dirProject])
+            if (dirProject != null) {
 
-            let monitor = setInterval(() => {
+                let logGravacao = ""
 
-                if (result != null) {
+                const id = PVI.FWLink.globalDaqMessagesObservers.add((msg, param) => {
 
-                    clearInterval(monitor)
-                    clearTimeout(timeoutMonitor)
+                    console.log(`%cLog Program: ${param[0]}`, ' color: #B0E0E6')
+                    logGravacao = logGravacao + param[0]
 
-                    if (result.includes(`Operation completed.`)) {
+                    if (param[0] != undefined) {
 
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #00EE66')
-                        callback(true, result)
+                        if (param[0].includes(`Operation completed.`)) {
 
-                    } else if (result.includes(`Cannot find the specified tool.`)) {
+                            PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                            clearTimeout(timeOutGravacao)
 
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #EE0033')
-                        callback(null, `Gravador não respondeu`)
+                            resolve({ sucess: true, msg: logGravacao })
 
-                    } else if (result.includes(`Error: No project file specifed.`)) {
+                        } else if (param[0].includes(`Cannot find the specified tool.`)) {
 
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #EE0033')
-                        callback(false, `Projeto informado é inválido`)
+                            PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                            clearTimeout(timeOutGravacao)
 
-                    } else {
+                            resolve({ sucess: null, msg: `Gravador não respondeu` })
 
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #EE0033')
-                        callback(false, `Falha na gravação do firmware final`)
+                        } else if (param[0].includes(`Error: No project file specifed.`)) {
+
+                            PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                            clearTimeout(timeOutGravacao)
+
+                            resolve({ sucess: false, msg: `Projeto informado é inválido` })
+
+                        }
 
                     }
-                }
-            }, 100)
 
-            let timeoutMonitor = setTimeout(() => {
-                clearInterval(monitor)
-                callback(false, `Tempo de gravação excedido`)
-            }, timeOut)
+                }, "sniffer.exec")
 
-        } else {
-            callback(false, `Caminho do firmware não informado`)
-        }
+                pvi.runInstructionS("EXEC", [`${pvi.runInstructionS("GETPVIPATH", [])}/Resources/Renesas/RFPV3.Console.exe`, dirProject, "true", "true"])
+
+                let timeOutGravacao = setTimeout(() => {
+
+                    PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                    resolve({ sucess: false, msg: `Tempo de gravação excedido` })
+
+                }, timeOut)
+
+            } else {
+                resolve({ sucess: false, msg: `Caminho do firmware não informado` })
+            }
+
+        })
     }
 
     /**
@@ -188,45 +173,44 @@ class GravaFW {
      * @param {string} dirProject Formato esperado: "C:\\Users\\eduardo.rezzadori\\Desktop\\Farmwar\\193M3PL3v01_3.02.hex"
      * @param {string} commandFile Arquivo de comandos JLink, pseudo-script de gravação
      * @param {string} device modelo do micrcontrolador
-     * @param {function} callback 
      * @param {number} timeOut 
      */
-    static JLink_v7(dirProject = null, commandFile = null, device, callback = () => { }, timeOut = 10000) {
+    static JLink_v7(dirProject = null, commandFile = null, device, timeOut = 10000) {
 
-        let error = null, observer = null, logGravacao = [], controleGravacao = null
-        const pathPVI = pvi.runInstructionS("GETPVIPATH", [])
+        let logGravacao = ""
 
-        observer = pvi.FWLink.globalDaqMessagesObservers.add((m, data) => {
-            console.log(m, data)
-            logGravacao.push(data)
+        const id = PVI.FWLink.globalDaqMessagesObservers.add((msg, param) => {
+
+            console.log(`%cLog Program: ${param[0]}`, ' color: #B0E0E6')
+            logGravacao = logGravacao + param[0]
+
             if (data == "Script processing completed.") {
-                pvi.FWLink.globalDaqMessagesObservers.clear()
-                pvi.daq.init()
-                logGravacao.forEach((e) => {
-                    if (e == "O.K.") {
-                        observer = () => { }
-                        controleGravacao = true
-                    } else if (e == "Cannot connect to target.") {
-                        error = e
-                    }
-                })
-                if (controleGravacao) {
+
+                PVI.FWLink.globalDaqMessagesObservers.remove(id)
+
+                if (logGravacao.includes(`O.K.`)) {
+
                     clearTimeout(timeOutGravacao)
-                    callback(true, `Gravado com sucesso, caminho: ${dirProject}`)
-                } else if (error) {
+                    resolve({ sucess: true, msg: `Gravado com sucesso, caminho: ${dirProject}` })
+
+                } else if (logGravacao.includes(`Cannot connect to target.`)) {
+
                     clearTimeout(timeOutGravacao)
-                    callback(false, `Falha na gravação, ${error}`)
-                } else {
-                    clearTimeout(timeOutGravacao)
-                    callback(false, `Falha na gravação, caminho: ${dirProject}`)
+                    resolve({ sucess: false, msg: `Cannot connect to target.` })
+
                 }
+
             }
         }, "sniffer.exec")
-        pvi.runInstructionS("EXEC", [`${pathPVI}\\Plugins\\JLINK7\\JLink.exe`, `-device ${device} -CommandFile ${commandFile}`, "true", "true"])
+
+        pvi.runInstructionS("EXEC", [`${pvi.runInstructionS("GETPVIPATH", [])}\\Plugins\\JLINK7\\JLink.exe`, `-device ${device} -CommandFile ${commandFile}`, "true", "true"])
+
         let timeOutGravacao = setTimeout(() => {
-            pvi.FWLink.globalDaqMessagesObservers.clear()
-            pvi.daq.init()
-            callback(false, `Falha na gravação, verifique a conexão USB do gravador`)
+
+            PVI.FWLink.globalDaqMessagesObservers.remove(id)
+            resolve({ sucess: false, msg: `Falha na gravação, verifique a conexão USB do gravador.` })
+
         }, timeOut)
+
     }
 }
