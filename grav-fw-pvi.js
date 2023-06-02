@@ -6,11 +6,11 @@ class GravaFW {
      * @param {string} dirOpt formato esperado: "I:\\\Documentos\\\Softwares\\\STM8\\\STM8S003F3\\\INV-173\\\173v01\\\173v01_1.50_Com.stp"
      * @param {string} modelo_uC formato esperado: "STM8S003F3"
      */
-    static async STM8(dirFirm = null, dirOpt = null, modelo_uC = null, timeOut = 5000) {
+    static async STM8(dirFirm = null, dirOpt = null, objArguments = {}, timeOut = 5000) {
 
         return new Promise(async (resolve) => {
 
-            let ObjWriteSTM8 = await defineWriteSTM8(dirFirm, dirOpt, modelo_uC)
+            let ObjWriteSTM8 = await defineWriteSTM8(dirFirm, dirOpt, objArguments)
 
             let logGravacao = ""
 
@@ -61,47 +61,51 @@ class GravaFW {
 
         })
 
+        /**
+         * 
+         * @param {string} dirFirm 
+         * @param {string} dirOpt 
+         * @param {object} objArguments 
+         * @returns 
+         */
+        async function defineWriteSTM8(dirFirm, dirOpt, objArguments) {
 
-        async function defineWriteSTM8(dirFirm, dirOpt, modelo_uC) {
+            return new Promise(async (resolve) => {
 
-            return new Promise((resolve) => {
+                const log = objArguments.log == true ? "-log " : ""
+                const loop = objArguments.loop == true ? "-loop " : "-no_loop "
+                const erase = objArguments.erase == true ? "-erase " : ""
+                const blank = objArguments.blank == true ? "-blank " : ""
+                const verif = objArguments.verif == true ? "-verif " : ""
+                const verbose = objArguments.verbose == true ? "-verbose " : ""
+                const version = objArguments.version == true ? "-version " : ""
+                const progress = objArguments.progress == true ? "-progress " : ""
+                const readProg = objArguments.readProg == true ? "-readProg " : ""
+                const readData = objArguments.readData == true ? "-readData " : ""
+                const readOption = objArguments.readOption == true ? "-readOption " : ""
+                const no_progProg = objArguments.no_progProg == true ? "-no_progProg " : ""
+                const warn_protect = objArguments.warn_protect == true ? "-warn_protect " : "-no_warn_protect "
+                const no_progOption = objArguments.no_progOption == true ? "-no_progOption " : ""
 
-                if (dirFirm != null && dirOpt != null) {
+                const Port = objArguments.Port != undefined ? `-Port=${objArguments.Port} ` : "-Port=USB "
+                const ProgMode = objArguments.ProgMode != undefined ? `-ProgMode=${objArguments.ProgMode} ` : "-ProgMode=SWIM "
+                const Device = objArguments.Device != undefined ? `-Device=${objArguments.Device}` : ""
+                const NbTools = objArguments.NbTools != undefined ? `-NbTools=${objArguments.NbTools} ` : "-NbTools=1 "
+                const Tool_ID = objArguments.Tool_ID != undefined ? `-Tool_ID=${objArguments.Tool_ID} ` : "-Tool_ID=0 "
+                const BoardName = objArguments.BoardName != undefined ? `-BoardName=${objArguments.BoardName} ` : "-BoardName=ST-LINK ";
 
-                    dirFirm = dirFirm.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`)
-                    dirOpt = dirOpt.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`)
+                const FileData = objArguments.FileData != undefined ? `-FileOption=${objArguments.FileData} ` : ""
+                const FileProg = dirFirm != null ? `-FileProg=${dirFirm.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`)} ` : ""
+                const FileOption = dirOpt != null ? `-FileOption=${dirOpt.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`)} ` : ""
 
-                    resolve({
-                        sucess: true,
-                        commandLineArguments: `-BoardName=ST-LINK -Tool_ID=0 -NbTools=1 -Port=USB -ProgMode=SWIM -Device=${modelo_uC} -verbose -no_loop -no_warn_protect -FileProg=${dirFirm} -FileOption=${dirOpt}`,
-                    })
-
-                } else if (dirFirm != null) {
-
-                    dirFirm = dirFirm.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`)
-
-                    resolve({
-                        sucess: true,
-                        commandLineArguments: `-BoardName=ST-LINK -Tool_ID=0 -NbTools=1 -Port=USB -ProgMode=SWIM -Device=${modelo_uC} -verbose -no_loop -no_warn_protect -FileProg=${dirFirm}`,
-                    })
-
-                } else if (dirOpt != null) {
-
-                    dirOpt = dirOpt.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`)
-
-                    resolve({
-                        sucess: true,
-                        commandLineArguments: `-BoardName=ST-LINK -Tool_ID=0 -NbTools=1 -Port=USB -ProgMode=SWIM -Device=${modelo_uC} -verbose -no_loop -no_warn_protect -FileOption=${dirOpt}`,
-                    })
-
-                } else {
-                    resolve({
-                        sucess: false,
-                    })
-                }
+                resolve({
+                    sucess: true,
+                    commandLineArguments: `${BoardName}${Tool_ID}${NbTools}${Port}${ProgMode}${verbose}` +
+                        `${loop}${warn_protect}${erase}${blank}${verif}${FileProg}${FileOption}${FileData}` +
+                        `${readProg}${readData}${readOption}${log}${progress}${no_progOption}${no_progProg}${version}${version}${Device}`,
+                })
 
             })
-
         }
     }
 
