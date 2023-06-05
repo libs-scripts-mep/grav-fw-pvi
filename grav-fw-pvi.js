@@ -37,11 +37,27 @@ class GravaFW {
 
                             resolve({ sucess: null, msg: `Gravador não respondeu` })
 
+                        } else if (param[0].includes(`(API) ERROR`)) {
+
+                            PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                            clearTimeout(timeOutGravacao)
+
+                            resolve({ sucess: null, msg: `Não foi possível realizara a gravação` })
+
                         }
 
                     }
 
                 }, "sniffer.exec")
+
+                let timeOutGravacao = setTimeout(() => {
+
+                    console.log(`%cLog Program:\n\n${logGravacao}`, ' color: #EE0033')
+                    PVI.FWLink.globalDaqMessagesObservers.remove(id)
+
+                    resolve({ sucess: false, msg: `Falha na gravação do firmware final` })
+
+                }, timeOut)
 
             } else {
                 console.log(`%cNenhum diretório de firmware ou option byte informado`, ' color: #EE0033')
@@ -49,15 +65,6 @@ class GravaFW {
             }
 
             pvi.runInstructionS("EXEC", [`C:/Program Files (x86)/STMicroelectronics/st_toolset/stvp/STVP_CmdLine.exe`, ObjWriteSTM8.commandLineArguments, "true", "true"])
-
-            let timeOutGravacao = setTimeout(() => {
-
-                console.log(`%cLog Program:\n\n${logGravacao}`, ' color: #EE0033')
-                PVI.FWLink.globalDaqMessagesObservers.remove(id)
-
-                resolve({ sucess: false, msg: `Falha na gravação do firmware final` })
-
-            }, timeOut)
 
         })
 
