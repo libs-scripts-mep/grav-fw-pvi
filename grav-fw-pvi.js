@@ -2,7 +2,7 @@ class GravaFW {
 
     /**
      * Realiza gravacao nos microcontroladores ST atraves do PVI, via STVP command line 
-     * @param {string} dirFirm formato esperado: "I:\\\Documentos\\\Softwares\\\STM8\\\STM8S003F3\\\INV-173\\\173v01\\\173v01_1.50_Com.stp"
+     * @param {string} dirFirm formato esperado: "I:\\\\Documentos\\\Softwares\\\STM8\\\STM8S003F3\\\INV-173\\\173v01\\\173v01_1.50_Com.stp"
      * @param {string} dirOpt formato esperado: "I:\\\Documentos\\\Softwares\\\STM8\\\STM8S003F3\\\INV-173\\\173v01\\\173v01_1.50_Com.stp"
      * @param {string} modelo_uC formato esperado: "STM8S003F3"
      */
@@ -226,6 +226,13 @@ class GravaFW {
     }
 
 
+    /**
+     * Realiza gravacao nos microcontroladores Nuvoton atraves do PVI, via JLink command line
+     * @param {string} sessionStorageTag nome que sera utilizado para armazenar a porta COM encontrada
+     * @param {string} appPath formato esperado: "I:\\Documentos\\Softwares\\ESP32\\INV-161\\31L\\INV-161_INV-161_HW2-31-FW-v1.bat" ou "I:\\Documentos\\Softwares\\ESP32\\INV-161\\31L\\INV-161_INV-161_HW2-31-FW-v1.bin"
+     * @param {boolean} isBatFile true = firmware esta em .bat / false = firmware esta em .bin
+     * @param {number} betweenMsgTimeout timeout maximo para inatividade na comunicação com o ESP32 
+     */
     static async ESP32(sessionStorageTag, appPath, isBatFile, betweenMsgTimeout) {
 
         return new Promise((resolve) => {
