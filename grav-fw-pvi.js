@@ -121,7 +121,7 @@ class GravaFW {
      * @param {string} dirProject Formato esperado: "I:\\\Documentos\\\Softwares\\\RENESAS\\\R5F51303ADFL\\\INV-301\\\301v06\\\301v06.rpj"
      * @param {number} timeOut 
      */
-    static Renesas(dirProject = null, timeOut = 5000) {
+    static async Renesas(dirProject = null, timeOut = 5000) {
 
         return new Promise((resolve) => {
 
@@ -186,7 +186,7 @@ class GravaFW {
      * @param {string} device modelo do micrcontrolador
      * @param {number} timeOut 
      */
-    static JLink_v7(dirProject = null, commandFile = null, device, timeOut = 10000) {
+    static async JLink_v7(dirProject = null, commandFile = null, device, timeOut = 10000) {
 
         let logGravacao = ""
 
@@ -224,4 +224,82 @@ class GravaFW {
         }, timeOut)
 
     }
+
+
+    static async ESP32(sessionStorageTag, appPath, isBatFile, betweenMsgTimeout) {
+
+        return new Promise((resolve) => {
+
+            console.time("WriteFirmware")
+
+            if (!appPath) {
+                resolve({ sucess: false, msg: "Caminho de arquivo para gravação não especificado" }); return
+            }
+
+            let portsFound = null, tryingPorts = [], lastTimeMsg = new Date().getTime()
+
+            const betweenMsgMonitor = setInterval(() => {
+
+                if (new Date().getTime() - lastTimeMsg > betweenMsgTimeout) {
+                    clearInterval(betweenMsgMonitor)
+                    PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                    resolve({ sucess: false, msg: "esptool.py encontrou um problema e teve que ser finalizado." }); return
+                }
+
+            }, 1000)
+
+            const id = PVI.FWLink.globalDaqMessagesObservers.add((filter, message) => {
+
+                const info = message[0]
+                lastTimeMsg = new Date().getTime()
+                console.log(`%cLog Program: ${message}`, ' color: #87CEEB')
+
+                if (info.includes("Found")) {
+                    const splittedInfo = info.split(" ")
+                    portsFound = parseInt(splittedInfo[1])
+
+                } else if (info.includes("Serial port")) {
+                    const splittedInfo = info.split(" ")
+                    tryingPorts.push(splittedInfo[2])
+                    UI.setMsg(`Tentando gravar na porta ${splittedInfo[2]}`)
+
+                } else if (info.includes("failed to connect")) {
+                    if (tryingPorts.length >= portsFound) {
+                        PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                        resolve({ sucess: false, msg: "Gravador não conseguiu se conectar com o ESP32" }); return
+                    }
+
+                } else if (info.includes("%")) {
+                    UI.setMsg(info)
+
+                } else if (info.includes("Hard resetting via RTS pin...")) {
+                    sessionStorage.getItem(sessionStorageTag) == null ? sessionStorage.setItem(sessionStorageTag, tryingPorts.pop()) : null
+                    PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                    resolve({ sucess: true, msg: "Gravação bem sucedida" })
+                    console.timeEnd("WriteFirmware")
+                }
+
+            }, "PVI.Sniffer.sniffer.exec_return.data")
+
+            console.log("writeFirmware ID", id)
+
+            let pythonPath = "C:/esp-idf/Python/python.exe"
+            let espToolPath = "C:/esp-idf/components/esptool_py/esptool/esptool.py"
+            let port = ""
+
+            sessionStorage.getItem(sessionStorageTag) != null ? port = `-p${sessionStorage.getItem(sessionStorageTag)}` : null
+
+            const args = `${espToolPath} ${port} -b 480600 --before default_reset --after hard_reset --chip esp32  write_flash --flash_mode dio --flash_size detect --flash_freq 40m 0x0000 ${appPath}`
+
+            if (isBatFile) {
+                console.log(`Executando batch: ${appPath} args: ${port}`)
+                pvi.runInstructionS("EXEC", [appPath, port, "true", "true", "true"])
+            } else {
+                console.log(`Executando python: ${pythonPath} args: ${args}`)
+                pvi.runInstructionS("EXEC", [pythonPath, args, "true", "true", "true"])
+            }
+
+        })
+    }
+
 }
