@@ -233,13 +233,13 @@ class GravaFW {
      * @param {boolean} isBatFile true = firmware esta em .bat / false = firmware esta em .bin
      * @param {number} betweenMsgTimeout timeout maximo para inatividade na comunicação com o ESP32 
      */
-    static async ESP32(sessionStorageTag, appPath, isBatFile, betweenMsgTimeout) {
+    static async ESP32(sessionStorageTag, AddressFilePath, isBatFile, betweenMsgTimeout) {
 
         return new Promise((resolve) => {
 
             console.time("WriteFirmware")
 
-            if (!appPath) {
+            if (!AddressFilePath) {
                 resolve({ sucess: false, msg: "Caminho de arquivo para gravação não especificado" }); return
             }
 
@@ -296,11 +296,11 @@ class GravaFW {
 
             sessionStorage.getItem(sessionStorageTag) != null ? port = `-p${sessionStorage.getItem(sessionStorageTag)}` : null
 
-            const args = `${espToolPath} ${port} -b 480600 --before default_reset --after hard_reset --chip esp32  write_flash --flash_mode dio --flash_size detect --flash_freq 40m 0x0000 ${appPath}`
+            const args = `${espToolPath} ${port} -b 480600 --before default_reset --after hard_reset --chip esp32  write_flash --flash_mode dio --flash_size detect --flash_freq 40m ${AddressFilePath}`
 
             if (isBatFile) {
-                console.log(`Executando batch: ${appPath} args: ${port}`)
-                pvi.runInstructionS("EXEC", [appPath, port, "true", "true", "true"])
+                console.log(`Executando batch: ${AddressFilePath} args: ${port}`)
+                pvi.runInstructionS("EXEC", [AddressFilePath, port, "true", "true", "true"])
             } else {
                 console.log(`Executando python: ${pythonPath} args: ${args}`)
                 pvi.runInstructionS("EXEC", [pythonPath, args, "true", "true", "true"])
