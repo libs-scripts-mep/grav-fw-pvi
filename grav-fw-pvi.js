@@ -10,6 +10,12 @@ class GravaFW {
 
         return new Promise(async (resolve) => {
 
+            let validationMsg = ``
+
+            if (dirFirm != null && dirOpt != null) { validationMsg = `Verify OPTION BYTE succeeds` }
+            else if (dirFirm != null) { validationMsg = `Verifying PROGRAM MEMORY succeeds` }
+            else if (dirOpt != null) { validationMsg = `Verify OPTION BYTE succeeds` }
+
             let ObjWriteSTM8 = await defineWriteSTM8(dirFirm, dirOpt, objArguments)
 
             let logGravacao = ""
@@ -23,7 +29,7 @@ class GravaFW {
 
                     if (param[0] != undefined) {
 
-                        if (param[0].includes(`Verify OPTION BYTE succeeds`)) {
+                        if (param[0].includes(validationMsg)) {
 
                             PVI.FWLink.globalDaqMessagesObservers.remove(id)
                             clearTimeout(timeOutGravacao)
@@ -42,7 +48,7 @@ class GravaFW {
                             PVI.FWLink.globalDaqMessagesObservers.remove(id)
                             clearTimeout(timeOutGravacao)
 
-                            resolve({ sucess: null, msg: `Não foi possível realizara a gravação` })
+                            resolve({ sucess: null, msg: `Não foi possível realizar a gravação` })
 
                         }
 
@@ -99,7 +105,7 @@ class GravaFW {
                 const Device = objArguments.Device != undefined ? `-Device=${objArguments.Device}` : ""
                 const NbTools = objArguments.NbTools != undefined ? `-NbTools=${objArguments.NbTools} ` : "-NbTools=1 "
                 const Tool_ID = objArguments.Tool_ID != undefined ? `-Tool_ID=${objArguments.Tool_ID} ` : "-Tool_ID=0 "
-                const BoardName = objArguments.BoardName != undefined ? `-BoardName=${objArguments.BoardName} ` : "-BoardName=ST-LINK ";
+                const BoardName = objArguments.BoardName != undefined ? `-BoardName=${objArguments.BoardName} ` : "-BoardName=ST-LINK "
 
                 const FileData = objArguments.FileData != undefined ? `-FileOption=${objArguments.FileData} ` : ""
                 const FileProg = dirFirm != null ? `-FileProg=${dirFirm.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`)} ` : ""
