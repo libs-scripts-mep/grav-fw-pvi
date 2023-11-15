@@ -1,10 +1,28 @@
-class GravaFW {
+import FWLink from "../daq-fwlink/FWLink.js"
+
+export default class GravaFW {
 
     /**
-     * Realiza gravacao nos microcontroladores ST atraves do PVI, via STVP command line 
-     * @param {string} dirFirm formato esperado: "I:\\\\Documentos\\\Softwares\\\STM8\\\STM8S003F3\\\INV-173\\\173v01\\\173v01_1.50_Com.stp"
-     * @param {string} dirOpt formato esperado: "I:\\\Documentos\\\Softwares\\\STM8\\\STM8S003F3\\\INV-173\\\173v01\\\173v01_1.50_Com.stp"
-     * @param {string} modelo_uC formato esperado: "STM8S003F3"
+     * 
+     * @param {String} dirFirm 
+     * @param {String} dirOpt 
+     * @param {Object} objArguments 
+     * @param {Number} timeOut 
+     * @returns 
+     * 
+     * # Exemplos
+     * 
+     * ```js
+     * const programPath = "I:/script_repo/fw_repo/fw_v1_0.2.hex"
+     * const optionPath = "I:/script_repo/fw_repo/opt.hex"
+     * const writeFirmware = await GravaFW.STM8(programPath, optionPath, { Device: "STM8S003F3" })
+     * ```
+     * 
+     * # Retorno
+     * 
+     * ```js
+     * { success: Boolean, msg: String }
+     * ```
      */
     static async STM8(dirFirm = null, dirOpt = null, objArguments = {}, timeOut = 5000) {
 
@@ -20,9 +38,9 @@ class GravaFW {
 
             let logGravacao = ""
 
-            if (ObjWriteSTM8.sucess) {
+            if (ObjWriteSTM8.success) {
 
-                const id = PVI.FWLink.globalDaqMessagesObservers.add((msg, param) => {
+                const id = FWLink.PVIEventObserver.add((msg, param) => {
 
                     console.log(`%cLog Program: ${param[0]}`, ' color: #B0E0E6')
                     logGravacao = logGravacao + param[0]
@@ -31,24 +49,24 @@ class GravaFW {
 
                         if (param[0].includes(validationMsg)) {
 
-                            PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                            FWLink.PVIEventObserver.remove(id)
                             clearTimeout(timeOutGravacao)
 
-                            resolve({ sucess: true, msg: logGravacao })
+                            resolve({ success: true, msg: logGravacao })
 
                         } else if (param[0].includes(`ERROR : Cannot communicate with the tool`)) {
 
-                            PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                            FWLink.PVIEventObserver.remove(id)
                             clearTimeout(timeOutGravacao)
 
-                            resolve({ sucess: null, msg: `Gravador não respondeu` })
+                            resolve({ success: null, msg: `Gravador não respondeu` })
 
                         } else if (param[0].includes(`(API) ERROR`)) {
 
-                            PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                            FWLink.PVIEventObserver.remove(id)
                             clearTimeout(timeOutGravacao)
 
-                            resolve({ sucess: null, msg: `Não foi possível realizar a gravação` })
+                            resolve({ success: null, msg: `Não foi possível realizar a gravação` })
 
                         }
 
@@ -59,26 +77,26 @@ class GravaFW {
                 let timeOutGravacao = setTimeout(() => {
 
                     console.log(`%cLog Program:\n\n${logGravacao}`, ' color: #EE0033')
-                    PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                    FWLink.PVIEventObserver.remove(id)
 
-                    resolve({ sucess: false, msg: `Falha na gravação do firmware final` })
+                    resolve({ success: false, msg: `Falha na gravação do firmware final` })
 
                 }, timeOut)
 
             } else {
                 console.log(`%cNenhum diretório de firmware ou option byte informado`, ' color: #EE0033')
-                resolve({ sucess: false, msg: `Nenhum diretório de firmware ou option byte informado` })
+                resolve({ success: false, msg: `Nenhum diretório de firmware ou option byte informado` })
             }
 
-            pvi.runInstructionS("EXEC", [`C:/Program Files (x86)/STMicroelectronics/st_toolset/stvp/STVP_CmdLine.exe`, ObjWriteSTM8.commandLineArguments, "true", "true"])
+            FWLink.runInstructionS("EXEC", [`C:/Program Files (x86)/STMicroelectronics/st_toolset/stvp/STVP_CmdLine.exe`, ObjWriteSTM8.commandLineArguments, "true", "true"])
 
         })
 
         /**
          * 
-         * @param {string} dirFirm 
-         * @param {string} dirOpt 
-         * @param {object} objArguments 
+         * @param {String} dirFirm 
+         * @param {String} dirOpt 
+         * @param {Object} objArguments 
          * @returns 
          */
         async function defineWriteSTM8(dirFirm, dirOpt, objArguments) {
@@ -112,7 +130,7 @@ class GravaFW {
                 const FileOption = dirOpt != null ? `-FileOption=${dirOpt.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`)} ` : ""
 
                 resolve({
-                    sucess: true,
+                    success: true,
                     commandLineArguments: `${BoardName}${Tool_ID}${NbTools}${Port}${ProgMode}${verbose}` +
                         `${loop}${warn_protect}${erase}${blank}${verif}${FileProg}${FileOption}${FileData}` +
                         `${readProg}${readData}${readOption}${log}${progress}${no_progOption}${no_progProg}${version}${version}${Device}`,
@@ -123,9 +141,24 @@ class GravaFW {
     }
 
     /**
-     * Realiza gravacao nos microcontroladores renesas atraves do PVI, via renesas flash programmer command line
-     * @param {string} dirProject Formato esperado: "I:\\\Documentos\\\Softwares\\\RENESAS\\\R5F51303ADFL\\\INV-301\\\301v06\\\301v06.rpj"
-     * @param {number} timeOut 
+     * 
+     * @param {String} dirProject 
+     * @param {Number} timeOut 
+     * @returns 
+     * 
+     * # Exemplos
+     * 
+     * ```js
+     * const programPath = "I:/script_repo/fw_repo/fw_v1_0.2.rpj"
+     * const optionPath = "I:/script_repo/fw_repo/opt.hex"
+     * const writeFirmware = await GravaFW.Renesas(programPath)
+     * ```
+     * 
+     * # Retorno
+     * 
+     * ```js
+     * { success: Boolean, msg: String }
+     * ```
      */
     static async Renesas(dirProject = null, timeOut = 5000) {
 
@@ -135,7 +168,7 @@ class GravaFW {
 
                 let logGravacao = ""
 
-                const id = PVI.FWLink.globalDaqMessagesObservers.add((msg, param) => {
+                const id = FWLink.PVIEventObserver.add((msg, param) => {
 
                     console.log(`%cLog Program: ${param[0]}`, ' color: #B0E0E6')
                     logGravacao = logGravacao + param[0]
@@ -144,24 +177,24 @@ class GravaFW {
 
                         if (param[0].includes(`Operation completed.`)) {
 
-                            PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                            FWLink.PVIEventObserver.remove(id)
                             clearTimeout(timeOutGravacao)
 
-                            resolve({ sucess: true, msg: logGravacao })
+                            resolve({ success: true, msg: logGravacao })
 
                         } else if (param[0].includes(`Cannot find the specified tool.`)) {
 
-                            PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                            FWLink.PVIEventObserver.remove(id)
                             clearTimeout(timeOutGravacao)
 
-                            resolve({ sucess: null, msg: `Gravador não respondeu` })
+                            resolve({ success: null, msg: `Gravador não respondeu` })
 
                         } else if (param[0].includes(`Error: No project file specifed.`)) {
 
-                            PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                            FWLink.PVIEventObserver.remove(id)
                             clearTimeout(timeOutGravacao)
 
-                            resolve({ sucess: false, msg: `Projeto informado é inválido` })
+                            resolve({ success: false, msg: `Projeto informado é inválido` })
 
                         }
 
@@ -169,17 +202,17 @@ class GravaFW {
 
                 }, "sniffer.exec")
 
-                pvi.runInstructionS("EXEC", [`${pvi.runInstructionS("GETPVIPATH", [])}/Resources/Renesas/RFPV3.Console.exe`, dirProject, "true", "true"])
+                FWLink.runInstructionS("EXEC", [`${FWLink.runInstructionS("GETPVIPATH", [])}/Resources/Renesas/RFPV3.Console.exe`, dirProject, "true", "true"])
 
                 let timeOutGravacao = setTimeout(() => {
 
-                    PVI.FWLink.globalDaqMessagesObservers.remove(id)
-                    resolve({ sucess: false, msg: `Tempo de gravação excedido` })
+                    FWLink.PVIEventObserver.remove(id)
+                    resolve({ success: false, msg: `Tempo de gravação excedido` })
 
                 }, timeOut)
 
             } else {
-                resolve({ sucess: false, msg: `Caminho do firmware não informado` })
+                resolve({ success: false, msg: `Caminho do firmware não informado` })
             }
 
         })
@@ -187,7 +220,7 @@ class GravaFW {
 
     /**
      * Realiza gravacao nos microcontroladores Nuvoton atraves do PVI, via JLink command line
-     * @param {string} dirProject Formato esperado: "C:\\Users\\eduardo.rezzadori\\Desktop\\Farmwar\\193M3PL3v01_3.02.hex"
+     * @param {string} dirProject caminho do firmware
      * @param {string} commandFile Arquivo de comandos JLink, pseudo-script de gravação
      * @param {string} device modelo do micrcontrolador
      * @param {number} timeOut 
@@ -196,37 +229,35 @@ class GravaFW {
 
         let logGravacao = ""
 
-        const id = PVI.FWLink.globalDaqMessagesObservers.add((msg, param) => {
+        const id = FWLink.PVIEventObserver.add((msg, param) => {
 
             console.log(`%cLog Program: ${param[0]}`, ' color: #B0E0E6')
             logGravacao = logGravacao + param[0]
 
             if (data == "Script processing completed.") {
 
-                PVI.FWLink.globalDaqMessagesObservers.remove(id)
+                FWLink.PVIEventObserver.remove(id)
 
                 if (logGravacao.includes(`O.K.`)) {
 
                     clearTimeout(timeOutGravacao)
-                    resolve({ sucess: true, msg: `Gravado com sucesso, caminho: ${dirProject}` })
+                    resolve({ success: true, msg: `Gravado com successo, caminho: ${dirProject}` })
 
                 } else if (logGravacao.includes(`Cannot connect to target.`)) {
 
                     clearTimeout(timeOutGravacao)
-                    resolve({ sucess: false, msg: `Cannot connect to target.` })
+                    resolve({ success: false, msg: `Cannot connect to target.` })
 
                 }
 
             }
         }, "sniffer.exec")
 
-        pvi.runInstructionS("EXEC", [`${pvi.runInstructionS("GETPVIPATH", [])}\\Plugins\\JLINK7\\JLink.exe`, `-device ${device} -CommandFile ${commandFile}`, "true", "true"])
+        FWLink.runInstructionS("EXEC", [`${FWLink.runInstructionS("GETPVIPATH", [])}\\Plugins\\JLINK7\\JLink.exe`, `-device ${device} -CommandFile ${commandFile}`, "true", "true"])
 
         let timeOutGravacao = setTimeout(() => {
-
-            PVI.FWLink.globalDaqMessagesObservers.remove(id)
-            resolve({ sucess: false, msg: `Falha na gravação, verifique a conexão USB do gravador.` })
-
+            FWLink.PVIEventObserver.remove(id)
+            resolve({ success: false, msg: `Falha na gravação, verifique a conexão USB do gravador.` })
         }, timeOut)
 
     }
@@ -234,19 +265,30 @@ class GravaFW {
 
     /**
      * Realiza gravacao nos microcontroladores Nuvoton atraves do PVI, via JLink command line
-     * @param {string} sessionStorageTag nome que sera utilizado para armazenar a porta COM encontrada
+     * @param {string} sessionStorageTag tag para armazenar e acessar o numero da porta COM
      * @param {string} appPath formato esperado: "I:\\Documentos\\Softwares\\ESP32\\INV-161\\31L\\INV-161_INV-161_HW2-31-FW-v1.bat" ou "I:\\Documentos\\Softwares\\ESP32\\INV-161\\31L\\INV-161_INV-161_HW2-31-FW-v1.bin"
-     * @param {boolean} isBatFile true = firmware esta em .bat / false = firmware esta em .bin
+     * @param {boolean} isBatFile distingue extensão entre .bat e .bin
      * @param {number} betweenMsgTimeout timeout maximo para inatividade na comunicação com o ESP32 
+     * 
+     * # Exemplos
+     * 
+     * ```js
+     * const AddressFilePath = "I:/firmware/path/FW-v1.bin"
+     * const result = await GravaFW.ESP32("Controlador", AddressFilePath, false, 5000)
+     * ```
+     * 
+     * # Result
+     * 
+     * ```js
+     * { success: Boolean, msg: String }
+     * ```
      */
     static async ESP32(sessionStorageTag, AddressFilePath, isBatFile, betweenMsgTimeout) {
 
         return new Promise((resolve) => {
 
-            console.time("WriteFirmware")
-
             if (!AddressFilePath) {
-                resolve({ sucess: false, msg: "Caminho de arquivo para gravação não especificado" }); return
+                resolve({ success: false, msg: "Caminho de arquivo para gravação não especificado" }); return
             }
 
             let portsFound = null, tryingPorts = [], lastTimeMsg = new Date().getTime()
@@ -255,17 +297,17 @@ class GravaFW {
 
                 if (new Date().getTime() - lastTimeMsg > betweenMsgTimeout) {
                     clearInterval(betweenMsgMonitor)
-                    PVI.FWLink.globalDaqMessagesObservers.remove(id)
-                    resolve({ sucess: false, msg: "esptool.py encontrou um problema e teve que ser finalizado." }); return
+                    FWLink.PVIEventObserver.remove(id)
+                    resolve({ success: false, msg: "esptool.py encontrou um problema e teve que ser finalizado." }); return
                 }
 
             }, 1000)
 
-            const id = PVI.FWLink.globalDaqMessagesObservers.add((filter, message) => {
+            const id = FWLink.PVIEventObserver.add((msg, param) => {
 
-                const info = message[0]
+                const info = param[0]
                 lastTimeMsg = new Date().getTime()
-                console.log(`%cLog Program: ${message}`, ' color: #87CEEB')
+                console.log(`%cLog Program: ${param}`, ' color: #87CEEB')
 
                 if (info.includes("Found")) {
                     const splittedInfo = info.split(" ")
@@ -278,8 +320,8 @@ class GravaFW {
 
                 } else if (info.includes("failed to connect")) {
                     if (tryingPorts.length >= portsFound) {
-                        PVI.FWLink.globalDaqMessagesObservers.remove(id)
-                        resolve({ sucess: false, msg: "Gravador não conseguiu se conectar com o ESP32" }); return
+                        FWLink.PVIEventObserver.remove(id)
+                        resolve({ success: false, msg: "Gravador não conseguiu se conectar com o ESP32" }); return
                     }
 
                 } else if (info.includes("%")) {
@@ -287,8 +329,8 @@ class GravaFW {
 
                 } else if (info.includes("Hard resetting via RTS pin...")) {
                     sessionStorage.getItem(sessionStorageTag) == null ? sessionStorage.setItem(sessionStorageTag, tryingPorts.pop()) : null
-                    PVI.FWLink.globalDaqMessagesObservers.remove(id)
-                    resolve({ sucess: true, msg: "Gravação bem sucedida" })
+                    FWLink.PVIEventObserver.remove(id)
+                    resolve({ success: true, msg: "Gravação bem sucedida" })
                     console.timeEnd("WriteFirmware")
                 }
 
@@ -306,10 +348,10 @@ class GravaFW {
 
             if (isBatFile) {
                 console.log(`Executando batch: ${AddressFilePath} args: ${port}`)
-                pvi.runInstructionS("EXEC", [AddressFilePath, port, "true", "true", "true"])
+                FWLink.runInstructionS("EXEC", [AddressFilePath, port, "true", "true", "true"])
             } else {
                 console.log(`Executando python: ${pythonPath} args: ${args}`)
-                pvi.runInstructionS("EXEC", [pythonPath, args, "true", "true", "true"])
+                FWLink.runInstructionS("EXEC", [pythonPath, args, "true", "true", "true"])
             }
 
         })
