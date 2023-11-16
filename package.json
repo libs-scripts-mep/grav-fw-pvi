@@ -1,6 +1,6 @@
 {
   "name": "@libs-scripts-mep/grav-fw-pvi",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Auxilia na gravação de microcontroladores por linha de comando através do PVI",
   "main": "grav-fw-pvi.js",
   "scripts": {
