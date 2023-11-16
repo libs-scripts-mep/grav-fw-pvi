@@ -52,21 +52,21 @@ export default class GravaFW {
                             FWLink.PVIEventObserver.remove(id)
                             clearTimeout(timeOutGravacao)
 
-                            resolve({ success: true, msg: logGravacao })
+                            resolve({ success: true, msg: "Gravação bem sucedida", dirFirm: dirFirm })
 
                         } else if (param[0].includes(`ERROR : Cannot communicate with the tool`)) {
 
                             FWLink.PVIEventObserver.remove(id)
                             clearTimeout(timeOutGravacao)
 
-                            resolve({ success: null, msg: `Gravador não respondeu` })
+                            resolve({ success: null, msg: `Gravador não respondeu`, dirFirm: dirFirm })
 
                         } else if (param[0].includes(`(API) ERROR`)) {
 
                             FWLink.PVIEventObserver.remove(id)
                             clearTimeout(timeOutGravacao)
 
-                            resolve({ success: null, msg: `Não foi possível realizar a gravação` })
+                            resolve({ success: null, msg: `Não foi possível realizar a gravação`, dirFirm: dirFirm })
 
                         }
 
@@ -180,21 +180,21 @@ export default class GravaFW {
                             FWLink.PVIEventObserver.remove(id)
                             clearTimeout(timeOutGravacao)
 
-                            resolve({ success: true, msg: logGravacao })
+                            resolve({ success: true, msg: "Gravação bem sucedida", dirProject: dirProject })
 
                         } else if (param[0].includes(`Cannot find the specified tool.`)) {
 
                             FWLink.PVIEventObserver.remove(id)
                             clearTimeout(timeOutGravacao)
 
-                            resolve({ success: null, msg: `Gravador não respondeu` })
+                            resolve({ success: null, msg: `Gravador não respondeu`, dirProject: dirProject })
 
                         } else if (param[0].includes(`Error: No project file specifed.`)) {
 
                             FWLink.PVIEventObserver.remove(id)
                             clearTimeout(timeOutGravacao)
 
-                            resolve({ success: false, msg: `Projeto informado é inválido` })
+                            resolve({ success: false, msg: `Projeto informado é inválido`, dirProject: dirProject })
 
                         }
 
@@ -241,7 +241,7 @@ export default class GravaFW {
                 if (logGravacao.includes(`O.K.`)) {
 
                     clearTimeout(timeOutGravacao)
-                    resolve({ success: true, msg: `Gravado com successo, caminho: ${dirProject}` })
+                    resolve({ success: true, msg: dirProject })
 
                 } else if (logGravacao.includes(`Cannot connect to target.`)) {
 
@@ -288,7 +288,7 @@ export default class GravaFW {
         return new Promise((resolve) => {
 
             if (!AddressFilePath) {
-                resolve({ success: false, msg: "Caminho de arquivo para gravação não especificado" }); return
+                resolve({ success: false, msg: "Caminho de arquivo para gravação não especificado", AddressFilePath: AddressFilePath }); return
             }
 
             let portsFound = null, tryingPorts = [], lastTimeMsg = new Date().getTime()
@@ -298,7 +298,7 @@ export default class GravaFW {
                 if (new Date().getTime() - lastTimeMsg > betweenMsgTimeout) {
                     clearInterval(betweenMsgMonitor)
                     FWLink.PVIEventObserver.remove(id)
-                    resolve({ success: false, msg: "esptool.py encontrou um problema e teve que ser finalizado." }); return
+                    resolve({ success: false, msg: "esptool.py encontrou um problema e teve que ser finalizado.", AddressFilePath: AddressFilePath }); return
                 }
 
             }, 1000)
@@ -321,7 +321,7 @@ export default class GravaFW {
                 } else if (info.includes("failed to connect")) {
                     if (tryingPorts.length >= portsFound) {
                         FWLink.PVIEventObserver.remove(id)
-                        resolve({ success: false, msg: "Gravador não conseguiu se conectar com o ESP32" }); return
+                        resolve({ success: false, msg: "Gravador não conseguiu se conectar com o ESP32", AddressFilePath: AddressFilePath }); return
                     }
 
                 } else if (info.includes("%")) {
@@ -330,7 +330,7 @@ export default class GravaFW {
                 } else if (info.includes("Hard resetting via RTS pin...")) {
                     sessionStorage.getItem(sessionStorageTag) == null ? sessionStorage.setItem(sessionStorageTag, tryingPorts.pop()) : null
                     FWLink.PVIEventObserver.remove(id)
-                    resolve({ success: true, msg: "Gravação bem sucedida" })
+                    resolve({ success: true, msg: "Gravação bem sucedida", AddressFilePath: AddressFilePath })
                     console.timeEnd("WriteFirmware")
                 }
 
