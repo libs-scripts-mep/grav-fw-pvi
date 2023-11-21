@@ -187,7 +187,7 @@ export default class GravaFW {
                             FWLink.PVIEventObserver.remove(id)
                             clearTimeout(timeOutGravacao)
 
-                            resolve({ success: null, msg: `Gravador não respondeu`, dirProject: dirProject })
+                            resolve({ success: false, msg: `Gravador não respondeu`, dirProject: dirProject })
 
                         } else if (param[0].includes(`Error: No project file specifed.`)) {
 
@@ -195,6 +195,13 @@ export default class GravaFW {
                             clearTimeout(timeOutGravacao)
 
                             resolve({ success: false, msg: `Projeto informado é inválido`, dirProject: dirProject })
+
+                        } else if (param[0].includes(`A framing error occurred while receiving data`)) {
+
+                            FWLink.PVIEventObserver.remove(id)
+                            clearTimeout(timeOutGravacao)
+
+                            resolve({ success: false, msg: `Falha ao receber dados do microcontrolador`, dirProject: dirProject })
 
                         }
 
