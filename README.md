@@ -4,6 +4,8 @@ Biblioteca que auxilia na gravação de microcontroladores por linha de comando 
 
 ## Instalando
 
+>  ### ⚠️ Compatibilidade PVI:  [>=  v4.8.0.0](https://git.inova.ind.br/Inova/PVI/releases/tag/4.8.0.0-beta0)
+
 Abra o terminal, e na pasta do script, execute:
 
 ```

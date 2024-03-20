@@ -33,6 +33,7 @@ export default class GravaFW {
             if (dirFirm != null && dirOpt != null) { validationMsg = `Verify OPTION BYTE succeeds` }
             else if (dirFirm != null) { validationMsg = `Verifying PROGRAM MEMORY succeeds` }
             else if (dirOpt != null) { validationMsg = `Verify OPTION BYTE succeeds` }
+            else { validationMsg = "error" }
 
             let ObjWriteSTM8 = await defineWriteSTM8(dirFirm, dirOpt, objArguments)
 
@@ -88,7 +89,7 @@ export default class GravaFW {
                 resolve({ success: false, msg: `Nenhum diretório de firmware ou option byte informado` })
             }
 
-            FWLink.runInstructionS("EXEC", [`C:/Program Files (x86)/STMicroelectronics/st_toolset/stvp/STVP_CmdLine.exe`, ObjWriteSTM8.commandLineArguments, "true", "true"])
+            FWLink.runInstructionS("EXEC", [`${FWLink.runInstructionS("GETRESOURCESPATH", [])}\\stvp\\STVP_CmdLine.exe`, ObjWriteSTM8.commandLineArguments, "true", "true"])
 
         })
 
@@ -209,7 +210,7 @@ export default class GravaFW {
 
                 }, "sniffer.exec")
 
-                FWLink.runInstructionS("EXEC", [`${FWLink.runInstructionS("GETPVIPATH", [])}/Resources/Renesas/RFPV3.Console.exe`, dirProject, "true", "true"])
+                FWLink.runInstructionS("EXEC", [`${FWLink.runInstructionS("GETRESOURCESPATH", [])}/Renesas/RFPV3.Console.exe`, dirProject, "true", "true"])
 
                 let timeOutGravacao = setTimeout(() => {
 
@@ -363,5 +364,7 @@ export default class GravaFW {
 
         })
     }
+
+    static { window.GravaFW = GravaFW }
 
 }
