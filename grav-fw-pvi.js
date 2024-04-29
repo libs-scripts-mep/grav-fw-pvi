@@ -70,7 +70,7 @@ class GravaFW {
                 resolve({ sucess: false, msg: `Nenhum diretório de firmware ou option byte informado` })
             }
 
-            pvi.runInstructionS("EXEC", [`C:/Program Files (x86)/STMicroelectronics/st_toolset/stvp/STVP_CmdLine.exe`, ObjWriteSTM8.commandLineArguments, "true", "true"])
+            pvi.runInstructionS("EXEC", [`${pvi.runInstructionS("GETRESOURCESPATH", [])}\\stvp\\STVP_CmdLine.exe`, ObjWriteSTM8.commandLineArguments, "true", "true"])
 
         })
 
@@ -169,7 +169,7 @@ class GravaFW {
 
                 }, "sniffer.exec")
 
-                pvi.runInstructionS("EXEC", [`${pvi.runInstructionS("GETPVIPATH", [])}/Resources/Renesas/RFPV3.Console.exe`, dirProject, "true", "true"])
+                pvi.runInstructionS("EXEC", [`${pvi.runInstructionS("GETRESOURCESPATH", [])}/Renesas/RFPV3.Console.exe`, dirProject, "true", "true"])
 
                 let timeOutGravacao = setTimeout(() => {
 
