@@ -7,7 +7,7 @@ export default class GravaFW {
      * @param {String} dirFirm 
      * @param {String} dirOpt 
      * @param {Object} objArguments 
-     * @param {Number} timeOut 
+     * @param {Number} [timeOut=5000] 
      * @returns 
      * 
      * # Exemplos
@@ -144,14 +144,13 @@ export default class GravaFW {
     /**
      * 
      * @param {String} dirProject 
-     * @param {Number} timeOut 
+     * @param {Number} [timeOut=5000] 
      * @returns 
      * 
      * # Exemplos
      * 
      * ```js
      * const programPath = "I:/script_repo/fw_repo/fw_v1_0.2.rpj"
-     * const optionPath = "I:/script_repo/fw_repo/opt.hex"
      * const writeFirmware = await GravaFW.Renesas(programPath)
      * ```
      * 
@@ -226,48 +225,84 @@ export default class GravaFW {
         })
     }
 
+
     /**
-     * Realiza gravacao nos microcontroladores Nuvoton atraves do PVI, via JLink command line
+     * Realiza gravacao nos microcontroladores Nuvoton atraves do PVI, via JLink command line.
+     * 
      * @param {string} dirProject caminho do firmware
-     * @param {string} commandFile Arquivo de comandos JLink, pseudo-script de gravação
+     * @param {string} nameFile nome para o arquivo de comandos JLink que ficará na pasta 'C:/Temp/', sujestão: código effective
      * @param {string} device modelo do micrcontrolador
-     * @param {number} timeOut 
+     * @param {number} [speed=4000] velocidade de gravação
+     * @param {number} [timeOut=5000] tempo máximo de gravação
+     * @returns {Promise<{success: boolean, msg: string}>} - resultado da gravação
+     * 
+     * # Exemplos
+     * 
+     * ```js
+     * const programPath = "I:/script_repo/fw_repo/fw_v1_0.2.hex"
+     * const codigo_effective = "1234"
+     * const device = "STM32C031K6"
+     * const writeFirmware = await GravaFW.JLink_v7(programPath, codigo_effective, device)
+     * ```
+     * 
+     * # Retorno
+     * 
+     * ```js
+     * { success: Boolean, msg: String }
+     * ```
      */
-    static async JLink_v7(dirProject = null, commandFile = null, device, timeOut = 10000) {
+    static async JLink_v7(dirProject = null, nameFile, device, speed = 4000, timeOut = 5000) {
 
-        let logGravacao = ""
+        return new Promise((resolve) => {
+            let logGravacao = ""
 
-        const id = FWLink.PVIEventObserver.add((msg, param) => {
+            const id = FWLink.PVIEventObserver.add((msg, param) => {
 
-            console.log(`%cLog Program: ${param[0]}`, ' color: #B0E0E6')
-            logGravacao = logGravacao + param[0]
+                console.log(`%cLog Program: ${param[0]}`, ' color: #B0E0E6')
+                logGravacao = logGravacao + param[0]
 
-            if (data == "Script processing completed.") {
+                if (param == "Script processing completed.") {
 
-                FWLink.PVIEventObserver.remove(id)
+                    FWLink.PVIEventObserver.remove(id)
 
-                if (logGravacao.includes(`O.K.`)) {
+                    if (logGravacao.includes('Program & Verify speed')) {
 
-                    clearTimeout(timeOutGravacao)
-                    resolve({ success: true, msg: dirProject })
+                        clearTimeout(timeOutGravacao)
+                        resolve({ success: true, msg: dirProject })
 
-                } else if (logGravacao.includes(`Cannot connect to target.`)) {
+                    } else if (logGravacao.includes(`Cannot connect to target.`)) {
 
-                    clearTimeout(timeOutGravacao)
-                    resolve({ success: false, msg: `Cannot connect to target.` })
+                        clearTimeout(timeOutGravacao)
+                        resolve({ success: false, msg: `Cannot connect to target.` })
+
+                    }
 
                 }
+            }, "sniffer.exec")
 
+            const commandFile = commandJlink(nameFile, speed, dirProject)
+            FWLink.runInstructionS("EXEC", [`${FWLink.runInstructionS("GETPVIPATH", [])}\\Plugins\\JLINK7\\JLink.exe`, `-device ${device} -CommandFile ${commandFile}`, "true", "true"])
+
+            let timeOutGravacao = setTimeout(() => {
+                FWLink.PVIEventObserver.remove(id)
+                resolve({ success: false, msg: `Falha na gravação, verifique a conexão USB do gravador.` })
+            }, timeOut)
+        })
+
+        function commandJlink(nameFile, speed, dirProject) {
+            if (FWLink.runInstructionS("vfs.directoryexists", [`C:/Temp/`]) == '1') {
+                if (FWLink.runInstructionS("vfs.fileexists", [`C:/Temp/${nameFile}.txt`]) == '1') {
+                    FWLink.runInstructionS("EXEC", ["cmd.exe", `/c (echo si 1 & echo speed ${speed} & echo r & echo h & echo erase & echo loadfile ${dirProject} & echo exit) > C:/Temp/${nameFile}.txt`, true, true])
+                    return `C:/Temp/${nameFile}.txt`
+                } else {
+                    FWLink.runInstructionS("EXEC", ["cmd.exe", `/c (echo texto invalido) > C:/Temp/${nameFile}.txt`, true, true])
+                    return commandJlink(nameFile, speed, dirProject)
+                }
+            } else {
+                FWLink.runInstructionS("vfs.createdirectory", [`C:/Temp/`])
+                return commandJlink(nameFile, speed, dirProject)
             }
-        }, "sniffer.exec")
-
-        FWLink.runInstructionS("EXEC", [`${FWLink.runInstructionS("GETPVIPATH", [])}\\Plugins\\JLINK7\\JLink.exe`, `-device ${device} -CommandFile ${commandFile}`, "true", "true"])
-
-        let timeOutGravacao = setTimeout(() => {
-            FWLink.PVIEventObserver.remove(id)
-            resolve({ success: false, msg: `Falha na gravação, verifique a conexão USB do gravador.` })
-        }, timeOut)
-
+        }
     }
 
 
