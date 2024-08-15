@@ -254,6 +254,9 @@ export default class GravaFW {
     static async JLink_v7(dirProject = null, nameFile, device, speed = 4000, timeOut = 5000) {
 
         return new Promise((resolve) => {
+
+            pvi.runInstructionS("JLINK7.init", []) // Inicializa o JLink
+            
             let logGravacao = ""
 
             const id = FWLink.PVIEventObserver.add((msg, param) => {
