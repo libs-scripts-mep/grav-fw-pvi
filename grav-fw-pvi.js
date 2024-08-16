@@ -255,7 +255,7 @@ export default class GravaFW {
 
         return new Promise((resolve) => {
 
-            pvi.runInstructionS("JLINK7.init", []) // Inicializa o JLink
+            FWLink.runInstructionS("JLINK7.init", []) // Inicializa o JLink
             
             let logGravacao = ""
 
