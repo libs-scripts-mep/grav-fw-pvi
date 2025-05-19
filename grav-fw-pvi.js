@@ -362,16 +362,14 @@ export default class GravaFW {
                 } else if (info.includes("Serial port")) {
                     const splittedInfo = info.split(" ")
                     tryingPorts.push(splittedInfo[2])
-                    UI.setMsg(`Tentando gravar na porta ${splittedInfo[2]}`)
 
-                } else if (info.includes("failed to connect")) {
+                } else if (info.includes("Failed to connect")) {
                     if (tryingPorts.length >= portsFound) {
                         FWLink.PVIEventObserver.remove(id)
                         resolve({ success: false, msg: "Gravador não conseguiu se conectar com o ESP32", AddressFilePath: AddressFilePath }); return
                     }
 
                 } else if (info.includes("%")) {
-                    UI.setMsg(info)
 
                 } else if (info.includes("Hard resetting via RTS pin...")) {
                     sessionStorage.getItem(sessionStorageTag) == null ? sessionStorage.setItem(sessionStorageTag, tryingPorts.pop()) : null
