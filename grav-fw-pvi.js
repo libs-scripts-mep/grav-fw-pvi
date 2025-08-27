@@ -17,7 +17,7 @@ class GravaFW {
                 dirOpt.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`),
                 modelo_uC
             ])
-            console.log("teste")
+
             let monitor = setInterval(() => {
 
                 if (result != null) {
@@ -139,45 +139,40 @@ class GravaFW {
     static Renesas(dirProject = null, callback = () => { }, timeOut = 5000) {
 
         if (dirProject != null) {
+            const eventObserverId = pvi.FWLink.globalDaqMessagesObservers.add((msg, [renesasOutLog]) => {
+                console.log(`%cLog Program: ${renesasOutLog}`, ' color: #B0E0E6')
 
-            let result = pvi.runInstructionS(`RENESAS.gravafw`, [dirProject])
-
-            let monitor = setInterval(() => {
-
-                if (result != null) {
-
-                    clearInterval(monitor)
-                    clearTimeout(timeoutMonitor)
-
-                    if (result.includes(`Operation completed.`)) {
-
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #00EE66')
-                        callback(true, result)
-
-                    } else if (result.includes(`Cannot find the specified tool.`)) {
-
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #EE0033')
+                if (renesasOutLog != undefined) {
+                    if (renesasOutLog.includes(`Operation completed.`)) {
+                        pvi.FWLink.globalDaqMessagesObservers.remove(eventObserverId)
+                        clearTimeout(timeoutGravacao)
+                        callback(true, `Gravação bem-sucedida: ${dirProject}`)
+                    } else if (renesasOutLog.includes(`Cannot find the specified tool.`)) {
+                        pvi.FWLink.globalDaqMessagesObservers.remove(eventObserverId)
+                        clearTimeout(timeoutGravacao)
                         callback(null, `Gravador não respondeu`)
-
-                    } else if (result.includes(`Error: No project file specifed.`)) {
-
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #EE0033')
+                    } else if (renesasOutLog.includes(`Error: No project file specifed.`)) {
+                        pvi.FWLink.globalDaqMessagesObservers.remove(eventObserverId)
+                        clearTimeout(timeoutGravacao)
                         callback(false, `Projeto informado é inválido`)
-
-                    } else {
-
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #EE0033')
-                        callback(false, `Falha na gravação do firmware final`)
-
+                    } else if (renesasOutLog.includes(`The device is not responding.`)) {
+                        pvi.FWLink.globalDaqMessagesObservers.remove(eventObserverId)
+                        clearTimeout(timeoutGravacao)
+                        callback(false, `Sem resposta do microcontrolador`)
+                    } else if (renesasOutLog.includes(`A framing error occurred while receiving data`)) {
+                        pvi.FWLink.globalDaqMessagesObservers.remove(eventObserverId)
+                        clearTimeout(timeoutGravacao)
+                        callback(false, `Falha ao receber dados do microcontrolador`)
                     }
                 }
-            }, 100)
+            }, "sniffer.exec")
 
-            let timeoutMonitor = setTimeout(() => {
-                clearInterval(monitor)
+            let timeoutGravacao = setTimeout(() => {
+                pvi.FWLink.globalDaqMessagesObservers.remove(eventObserverId)
                 callback(false, `Tempo de gravação excedido`)
             }, timeOut)
 
+            pvi.runInstructionS("EXEC", [`${pvi.runInstructionS("GETRESOURCESPATH", [])}/Renesas/RFPV3.Console.exe`, dirProject, "true", "true"])
         } else {
             callback(false, `Caminho do firmware não informado`)
         }
