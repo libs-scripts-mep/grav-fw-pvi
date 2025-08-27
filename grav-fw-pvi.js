@@ -17,7 +17,7 @@ class GravaFW {
                 dirOpt.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`),
                 modelo_uC
             ])
-
+            console.log("teste")
             let monitor = setInterval(() => {
 
                 if (result != null) {
