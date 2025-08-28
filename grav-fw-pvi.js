@@ -5,129 +5,56 @@ class GravaFW {
      * @param {string} dirFirm formato esperado: "I:\\\Documentos\\\Softwares\\\STM8\\\STM8S003F3\\\INV-173\\\173v01\\\173v01_1.50_Com.stp"
      * @param {string} dirOpt formato esperado: "I:\\\Documentos\\\Softwares\\\STM8\\\STM8S003F3\\\INV-173\\\173v01\\\173v01_1.50_Com.stp"
      * @param {string} modelo_uC formato esperado: "STM8S003F3"
-     * @param {function} callback 
+     * @param {function(boolean, string)} callback 
      * @param {number} timeOut 
-     */
-    static STM8(dirFirm = null, dirOpt = null, modelo_uC = null, callback = () => { }, timeOut = 5000) {
+    */
+    static STM8(dirFirm = null, dirOpt = null, device = "STM8S003F3", callback = () => { }, timeOut = 5000) {
+        if (dirFirm != null || dirOpt != null) {
+            let validationMsg = ""
 
-        if (dirFirm != null && dirOpt != null) {
+            if (dirFirm != null && dirOpt != null) validationMsg = `Verify OPTION BYTE succeeds`
+            else if (dirFirm != null) validationMsg = `Verifying PROGRAM MEMORY succeeds`
+            else if (dirOpt != null) validationMsg = `Verify OPTION BYTE succeeds`
+            else validationMsg = "error"
 
-            let result = pvi.runInstructionS(`ST.writefirmwarestm8_stlink`, [
-                dirFirm.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`),
-                dirOpt.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`),
-                modelo_uC
-            ])
+            const eventObserverId = pvi.FWLink.globalDaqMessagesObservers.add((msg, [stm8OutLog]) => {
+                console.log(`%cLog Program: ${stm8OutLog}`, ' color: #B0E0E6')
 
-            let monitor = setInterval(() => {
-
-                if (result != null) {
-
-                    clearInterval(monitor)
-                    clearTimeout(timeoutMonitor)
-
-                    if (result.includes(`Verify OPTION BYTE succeeds`)) {
-
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #00EE66')
-                        callback(true, result)
-
-                    } else if (result.includes(`ERROR : Cannot communicate with the tool`)) {
-
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #EE0033')
+                if (stm8OutLog != undefined) {
+                    if (stm8OutLog.includes(validationMsg)) {
+                        clearTimeout(timeoutGravacao)
+                        pvi.FWLink.globalDaqMessagesObservers.remove(eventObserverId)
+                        callback(true, `Gravação bem-sucedida`)
+                    } else if (stm8OutLog.includes(`ERROR : Cannot communicate with the tool`)) {
+                        clearTimeout(timeoutGravacao)
+                        pvi.FWLink.globalDaqMessagesObservers.remove(eventObserverId)
                         callback(null, `Gravador não respondeu`)
-
-                    } else {
-
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #EE0033')
-                        callback(false, `Falha na gravação do firmware final`)
-
+                    } else if (stm8OutLog.includes(`(API) ERROR`)) {
+                        clearTimeout(timeoutGravacao)
+                        pvi.FWLink.globalDaqMessagesObservers.remove(eventObserverId)
+                        callback(null, `Não foi possível realizar a gravação`)
                     }
                 }
-            }, 100)
+            }, "sniffer.exec")
 
-            let timeoutMonitor = setTimeout(() => {
-                clearInterval(monitor)
+            const timeoutGravacao = setTimeout(() => {
+                pvi.FWLink.globalDaqMessagesObservers.remove(eventObserverId)
                 callback(false, `Tempo de gravação excedido`)
             }, timeOut)
 
-        } else if (dirFirm != null) {
-
-            let result = pvi.runInstructionS(`ST.writeprogramstm8_stlink`, [
-                dirFirm.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`),
-                modelo_uC
-            ])
-
-            let monitor = setInterval(() => {
-
-                clearInterval(monitor)
-                clearTimeout(timeoutMonitor)
-
-                if (result != null) {
-
-                    if (result.includes(`Verifying PROGRAM MEMORY succeeds`)) {
-
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #00EE66')
-                        callback(true)
-
-                    } else if (result.includes(`ERROR : Cannot communicate with the tool`)) {
-
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #EE0033')
-                        callback(null, `Gravador não respondeu`)
-
-                    } else {
-
-                        console.log(`%cLog Program:\n\n${result}`, ' color: #EE0033')
-                        callback(false, `Falha na gravação do firmware`)
-
-                    }
-                }
-            }, 100)
-
-            let timeoutMonitor = setTimeout(() => {
-                clearInterval(monitor)
-                callback(false, `Tempo de gravação excedido`)
-            }, timeOut)
-
-        } else if (dirOpt != null) {
-
-            let result = pvi.runInstructionS(`ST.writeoptionstm8_stlink`, [
-                dirOpt.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`),
-                modelo_uC
-            ])
-
-            let monitor = setInterval(() => {
-
-                clearInterval(monitor)
-                clearTimeout(timeoutMonitor)
-
-                if (result != null) {
-
-                    if (result.includes(`Verify OPTION BYTE succeeds`)) {
-
-                        console.log(`%cLog Desprotect:\n\n${result}`, ' color: #00EE66')
-                        callback(true, result)
-
-                    } else if (result.includes(`ERROR : Cannot communicate with the tool`)) {
-
-                        console.log(`%cLog Desprotect:\n\n${result}`, ' color: #EE0033')
-                        callback(null, `Gravador não respondeu`)
-
-                    } else {
-
-                        console.log(`%cLog Desprotect:\n\n${result}`, ' color: #EE0033')
-                        callback(false, `Falha na gravação do option byte`)
-
-                    }
-                }
-            }, 100)
-
-            let timeoutMonitor = setTimeout(() => {
-                clearInterval(monitor)
-                callback(false, `Tempo de gravação excedido`)
-            }, timeOut)
-
+            pvi.runInstructionS(
+                "EXEC",
+                [`${pvi.runInstructionS("GETRESOURCESPATH", [])}\\stvp\\STVP_CmdLine.exe`, this.stm8CommandLineArguments(dirFirm, dirOpt, device), "true", "true"]
+            )
         } else {
             callback(false, `Nenhum diretório de firmware ou option byte informado.`)
         }
+    }
+
+    static stm8CommandLineArguments(dirFirm, dirOpt, device) {
+        const fileProg = dirFirm != null ? `-FileProg=${dirFirm.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`)} ` : ""
+        const fileOption = dirOpt != null ? `-FileOption=${dirOpt.replace(/[\\]/g, `\/`).replace(/\.stp|\.STP/, `.HEX`)} ` : ""
+        return `-BoardName=ST-LINK -Tool_ID=0 -NbTools=1 -Port=USB -ProgMode=SWIM -no_loop -no_warn_protect ${fileProg}${fileOption}-Device=${device}`
     }
 
     /**
