@@ -1,6 +1,9 @@
 import FWLink from "../daq-fwlink/FWLink.js"
+import Log from "../script-loader/utils-script.js"
 
 export default class GravaFW {
+
+    static progress
 
     /**
      * 
@@ -45,6 +48,7 @@ export default class GravaFW {
 
                     console.log(`%cLog Program: ${param[0]}`, ' color: #B0E0E6')
                     logGravacao = logGravacao + param[0]
+                    this.progress = param[0]
 
                     if (param[0] != undefined) {
 
@@ -89,7 +93,7 @@ export default class GravaFW {
                 resolve({ success: false, msg: `Nenhum diretório de firmware ou option byte informado` })
             }
 
-            FWLink.runInstructionS("EXEC", [`${FWLink.runInstructionS("GETRESOURCESPATH", [])}\\stvp\\STVP_CmdLine.exe`, ObjWriteSTM8.commandLineArguments, "true", "true"])
+            FWLink.runInstructionS("EXEC", [`I:/Teste_Producao/Resources/stvp/STVP_CmdLine.exe`, ObjWriteSTM8.commandLineArguments, "true", "true"])
 
         })
 
@@ -172,6 +176,7 @@ export default class GravaFW {
 
                     console.log(`%cLog Program: ${param[0]}`, ' color: #B0E0E6')
                     logGravacao = logGravacao + param[0]
+                    this.progress = param[0]
 
                     if (param[0] != undefined) {
 
@@ -209,7 +214,7 @@ export default class GravaFW {
 
                 }, "sniffer.exec")
 
-                FWLink.runInstructionS("EXEC", [`${FWLink.runInstructionS("GETRESOURCESPATH", [])}/Renesas/RFPV3.Console.exe`, dirProject, "true", "true"])
+                FWLink.runInstructionS("EXEC", [`I:/Teste_Producao/Resources/Renesas/RFPV3.Console.exe`, dirProject, "true", "true"])
 
                 let timeOutGravacao = setTimeout(() => {
 
@@ -263,6 +268,7 @@ export default class GravaFW {
 
                 console.log(`%cLog Program: ${param[0]}`, ' color: #B0E0E6')
                 logGravacao = logGravacao + param[0]
+                this.progress = param[0]
 
                 if (param == "Script processing completed.") {
 
@@ -284,7 +290,7 @@ export default class GravaFW {
             }, "sniffer.exec")
 
             const commandFile = commandJlink(nameFile, speed, dirProject)
-            FWLink.runInstructionS("EXEC", [`${FWLink.runInstructionS("GETPVIPATH", [])}\\Plugins\\JLINK7\\JLink.exe`, `-device ${device} -CommandFile ${commandFile}`, "true", "true"])
+            FWLink.runInstructionS("EXEC", [`I:/Teste_Producao/Resources/JLink7/JLink.exe`, `-device ${device} -CommandFile ${commandFile}`, "true", "true"])
 
             let timeOutGravacao = setTimeout(() => {
                 FWLink.PVIEventObserver.remove(id)
@@ -329,9 +335,10 @@ export default class GravaFW {
      * { success: Boolean, msg: String }
      * ```
      */
-    static async ESP32(sessionStorageTag, AddressFilePath, isBatFile, betweenMsgTimeout) {
+    static async ESP32(sessionStorageTag, AddressFilePath, isBatFile, betweenMsgTimeout = 10000, chip = "esp32") {
 
-        return new Promise((resolve) => {
+        return new Promise(async (resolve) => {
+            await this.checkDependenciesPython()
 
             if (!AddressFilePath) {
                 resolve({ success: false, msg: "Caminho de arquivo para gravação não especificado", AddressFilePath: AddressFilePath }); return
@@ -370,6 +377,7 @@ export default class GravaFW {
                     }
 
                 } else if (info.includes("%")) {
+                    this.progress = info
 
                 } else if (info.includes("Hard resetting via RTS pin...")) {
                     sessionStorage.getItem(sessionStorageTag) == null ? sessionStorage.setItem(sessionStorageTag, tryingPorts.pop()) : null
@@ -382,22 +390,52 @@ export default class GravaFW {
 
             console.log("writeFirmware ID", id)
 
-            let pythonPath = "C:/esp-idf/Python/python.exe"
-            let espToolPath = "C:/esp-idf/components/esptool_py/esptool/esptool.py"
             let port = ""
 
             sessionStorage.getItem(sessionStorageTag) != null ? port = `-p${sessionStorage.getItem(sessionStorageTag)}` : null
 
-            const args = `${espToolPath} ${port} -b 480600 --before default_reset --after hard_reset --chip esp32  write_flash --flash_mode dio --flash_size detect --flash_freq 40m ${AddressFilePath}`
+            const args = `${port} -b 480600 --before default_reset --after hard_reset --chip esp32  write_flash --flash_mode dio --flash_size detect --flash_freq 40m ${AddressFilePath}`
 
             if (isBatFile) {
                 console.log(`Executando batch: ${AddressFilePath} args: ${port}`)
                 FWLink.runInstructionS("EXEC", [AddressFilePath, port, "true", "true", "true"])
             } else {
-                console.log(`Executando python: ${pythonPath} args: ${args}`)
-                FWLink.runInstructionS("EXEC", [pythonPath, args, "true", "true", "true"])
+                console.log(`Executando esptoll, args: ${args}`)
+                FWLink.runInstructionS("EXEC", ["esptool", args, "true", "true", "true"])
             }
 
+        })
+    }
+
+    static getScriptPath() {
+        const pathC = location.pathname.slice(location.pathname.indexOf("C:/"), location.pathname.lastIndexOf("/"))
+        const pathI = location.pathname.slice(location.pathname.indexOf("I:/"), location.pathname.lastIndexOf("/"))
+
+        if (pathC.length > 0) {
+            return pathC
+        } else if (pathI.length > 0) {
+            return pathI
+        }
+    }
+
+    static async checkDependenciesPython(pyFilePath = this.getScriptPath() + '/node_modules/@libs-scripts-mep/grav-fw-pvi/compat.py') {
+        return new Promise((resolve) => {
+            const id = FWLink.PVIEventObserver.add((message, params) => {
+                const msg = params?.[0]
+
+                if (msg.includes("[ESP DEP]")) { Log.warn(msg, Log.Colors.Brown.SandyBrown) }
+
+                if (msg.includes("[ESP DEP]") && msg.includes("Package version check and update completed.")) {
+                    FWLink.PVIEventObserver.remove(id)
+                    Log.console("ESP: Dependências instaladas com sucesso.", Log.Colors.Green.SpringGreen)
+                    resolve({ success: true, msg: msg, })
+                }
+
+            }, "PVI.Sniffer.sniffer.PID_")
+
+            setTimeout(() => {
+                FWLink.runInstructionS("EXEC", ["Python", pyFilePath, "true", "true"])
+            }, 300)
         })
     }
 
